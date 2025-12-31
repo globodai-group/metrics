@@ -16,8 +16,10 @@
 *.md
 docs/
 
-# Tests
-tests/
+# Tests (keep secrets.json needed by build script)
+tests/*.js
+tests/cases/
+tests/mocks/
 *.test.js
 *.test.mjs
 coverage/
