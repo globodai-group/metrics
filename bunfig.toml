@@ -1,0 +1,24 @@
+# ===================================================================================
+# Bun Configuration for GitHub Metrics
+# ===================================================================================
+
+[install]
+# Use npm registry
+registry = "https://registry.npmjs.org"
+
+# Install peer dependencies
+peer = true
+
+# Install dev dependencies
+dev = true
+
+# Don't fail on optional dependency errors (important for native modules)
+optional = true
+
+[install.cache]
+# Global cache directory
+dir = "~/.bun/install/cache"
+
+[run]
+# Shell to use for scripts
+shell = "/bin/bash"
