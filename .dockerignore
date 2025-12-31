@@ -7,8 +7,10 @@
 .gitignore
 .gitattributes
 
-# CI/CD (keep docker-build.yml in context for reference)
-.github/
+# CI/CD workflows (keep .github/scripts/ for build)
+.github/workflows/
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE/
 
 # Documentation
 *.md
