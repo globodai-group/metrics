@@ -20,5 +20,5 @@ optional = true
 dir = "~/.bun/install/cache"
 
 [run]
-# Shell to use for scripts
-shell = "/bin/bash"
+# Shell to use for scripts (only "bun" or "system" are valid)
+shell = "system"
