@@ -1,0 +1,71 @@
+# ===================================================================================
+# Heroku Deployment Workflow
+# Pulls pre-built image from Docker Hub and deploys to Heroku
+# NO build on Heroku - just pull and push
+# ===================================================================================
+name: Deploy to Heroku
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: artik0din/008bec2b
+  HEROKU_APP: ${{ vars.HEROKU_APP_NAME }}
+
+jobs:
+  deploy:
+    name: Deploy to Heroku
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to Heroku Container Registry
+        run: |
+          echo "${{ secrets.HEROKU_API_KEY }}" | docker login --username=_ --password-stdin registry.heroku.com
+
+      - name: Pull pre-built image from Docker Hub
+        run: |
+          echo "Pulling pre-built image from Docker Hub..."
+          docker pull ${{ env.DOCKER_IMAGE }}:web
+          echo "✅ Image pulled successfully"
+
+      - name: Tag and push to Heroku
+        run: |
+          echo "Tagging image for Heroku..."
+          docker tag ${{ env.DOCKER_IMAGE }}:web registry.heroku.com/${{ env.HEROKU_APP }}/web
+
+          echo "Pushing to Heroku Container Registry..."
+          docker push registry.heroku.com/${{ env.HEROKU_APP }}/web
+
+          echo "✅ Image pushed to Heroku"
+
+      - name: Release on Heroku
+        run: |
+          echo "Releasing new version on Heroku..."
+          curl -X PATCH https://api.heroku.com/apps/${{ env.HEROKU_APP }}/formation \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+            -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
+            -d '{"updates": [{"type": "web", "docker_image": "'$(docker inspect registry.heroku.com/${{ env.HEROKU_APP }}/web --format={{.Id}})'"}]}'
+
+          echo "✅ Deployment complete!"
+
+      - name: Health check
+        continue-on-error: true
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+
+          echo "Checking app health..."
+          curl -sf "https://${{ env.HEROKU_APP }}.herokuapp.com/" > /dev/null && echo "✅ App is healthy" || echo "⚠️ Health check failed (app may still be starting)"

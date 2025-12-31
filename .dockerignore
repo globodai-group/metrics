@@ -1,1 +1,53 @@
-node_modules
+# ===================================================================================
+# Docker Ignore - Exclude files from Docker build context
+# ===================================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD templates only (keep .github/scripts/ and .github/workflows/ for build)
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE/
+
+# Documentation
+*.md
+docs/
+
+# Tests (keep tests/ folder - needed by build script for secrets.json and cases/)
+*.test.js
+*.test.mjs
+coverage/
+
+# Development
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+.env*
+!.env.example
+
+# Node modules (will be installed in Docker)
+node_modules/
+
+# Cache
+.cache/
+.bun/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Heroku specific
+Procfile
+heroku.yml
+Dockerfile.web
+
+# Backup files
+*.backup
+.migration-backup/
