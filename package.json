@@ -1,6 +1,7 @@
 {
   "name": "metrics",
   "version": "3.35.0-beta",
+  "packageManager": "bun@1.1.0",
   "description": "An infographics generator with 40+ plugins and 300+ options to display stats about your GitHub account and render them as SVG, Markdown, PDF or JSON!",
   "main": "index.mjs",
   "scripts": {
@@ -15,7 +16,7 @@
     "preview": "node .github/scripts/preview.mjs",
     "linter": "eslint source/**/*.mjs --quiet",
     "dev": "nodemon source/app/web/index.mjs -e mjs,css,ejs,json",
-    "postinstall": "node node_modules/puppeteer/install.js",
+    "postinstall": "echo 'Puppeteer uses system Chrome - skipping Chromium download'",
     "indepth": "node source/plugins/languages/analyzers.mjs"
   },
   "repository": {

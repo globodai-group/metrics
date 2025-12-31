@@ -1,37 +1,81 @@
-# Base image
-FROM node:20-bookworm-slim
+# ===================================================================================
+# GitHub Metrics - Bun-based Docker Image
+# Image: artik0din/008bec2b
+# ===================================================================================
 
-# Copy repository
-COPY . /metrics
+# Stage 1: Base with system dependencies
+FROM oven/bun:1.1-debian AS base
+
+# Install system dependencies for Chrome/Puppeteer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    gnupg \
+    ca-certificates \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-thai-tlwg \
+    fonts-kacst \
+    fonts-freefont-ttf \
+    libxss1 \
+    libx11-xcb1 \
+    libxtst6 \
+    libgconf-2-4 \
+    lsb-release \
+    curl \
+    unzip \
+    git \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Google Chrome Stable
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Deno for miscellaneous scripts
+RUN curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL=/usr/local sh
+
+# Environment variables for Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+ENV PUPPETEER_BROWSER_PATH=google-chrome-stable
+
+# Stage 2: Dependencies installation (cached layer)
+FROM base AS deps
 WORKDIR /metrics
 
-# Setup
-RUN chmod +x /metrics/source/app/action/index.mjs \
-  # Install latest chrome dev package, fonts to support major charsets and skip chromium download on puppeteer install
-  # Based on https://github.com/GoogleChrome/puppeteer/blob/master/docs/troubleshooting.md#running-puppeteer-in-docker
-  && apt-get update \
-  && apt-get install -y wget gnupg ca-certificates libgconf-2-4 \
-  && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-  && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-  && apt-get update \
-  && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf libxss1 libx11-xcb1 libxtst6 lsb-release --no-install-recommends \
-  # Install deno for miscellaneous scripts
-  && apt-get install -y curl unzip \
-  && curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL=/usr/local sh \
-  # Install ruby to support github licensed gem
-  && apt-get install -y ruby-full git g++ cmake pkg-config libssl-dev \
-  && gem install licensed \
-  # Install python for node-gyp
-  && apt-get install -y python3 \
-  # Clean apt/lists
-  && rm -rf /var/lib/apt/lists/* \
-  # Install node modules and rebuild indexes
-  && npm ci \
-  && npm run build
+# Copy package files first for better caching
+COPY package.json ./
+COPY bunfig.toml ./
 
-# Environment variables
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
-ENV PUPPETEER_BROWSER_PATH "google-chrome-stable"
+# Install dependencies with Bun
+RUN bun install --frozen-lockfile || bun install
 
-# Execute GitHub action
-ENTRYPOINT node /metrics/source/app/action/index.mjs
+# Stage 3: Build
+FROM deps AS builder
+WORKDIR /metrics
+
+# Copy source code
+COPY . .
+
+# Build the project
+RUN bun run build
+
+# Stage 4: Production
+FROM base AS runner
+WORKDIR /metrics
+
+# Copy built application
+COPY --from=builder /metrics .
+
+# Make entry point executable
+RUN chmod +x /metrics/source/app/action/index.mjs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# Entry point - use bun to run the action
+ENTRYPOINT ["bun", "run", "/metrics/source/app/action/index.mjs"]
