@@ -47,12 +47,11 @@ query AchievementsDefault {
         totalCount
       }
     }
-    projects(first: 1, orderBy: {field: CREATED_AT, direction: ASC}) {
-      totalCount
-      #nodes { This requires additional scopes :/
-      #  name
-      #}
-    }
+    # Projects (classic) has been deprecated by GitHub (May 2024)
+    # See: https://github.blog/changelog/2024-05-23-sunset-notice-projects-classic/
+    # projects(first: 1, orderBy: {field: CREATED_AT, direction: ASC}) {
+    #   totalCount
+    # }
     packages(first: 1, orderBy: {direction: ASC, field: CREATED_AT}) {
       totalCount
       #nodes { This requires additional scopes :/

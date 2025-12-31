@@ -1,9 +1,9 @@
 # ===================================================================================
-# GitHub Metrics - Bun-based Docker Image
-# Image: artik0din/008bec2b
+# GitHub Metrics - Web Server Image (Bun-based)
+# For Heroku deployment
 # ===================================================================================
 
-# Stage 1: Base with system dependencies
+# Use the same base as the action Dockerfile for consistency
 FROM oven/bun:1.1-debian AS base
 
 # Install system dependencies for Chrome/Puppeteer
@@ -41,41 +41,31 @@ RUN curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL=/usr/local 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 ENV PUPPETEER_BROWSER_PATH=google-chrome-stable
+ENV NODE_ENV=production
 
-# Stage 2: Dependencies installation (cached layer)
+# Dependencies stage
 FROM base AS deps
 WORKDIR /metrics
 
-# Copy package files first for better caching
-COPY package.json ./
-COPY bunfig.toml ./
-
-# Install dependencies with Bun
+COPY package.json bunfig.toml ./
 RUN bun install --frozen-lockfile || bun install
 
-# Stage 3: Build
+# Build stage
 FROM deps AS builder
 WORKDIR /metrics
 
-# Copy source code
 COPY . .
-
-# Build the project
 RUN bun run build
 
-# Stage 4: Production
+# Production stage
 FROM base AS runner
 WORKDIR /metrics
 
-# Copy built application
 COPY --from=builder /metrics .
 
-# Make entry point executable
-RUN chmod +x /metrics/source/app/action/index.mjs
+# Heroku uses PORT env variable
+ENV PORT=3000
+EXPOSE $PORT
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
-
-# Entry point - use bun to run the action
-ENTRYPOINT ["bun", "run", "/metrics/source/app/action/index.mjs"]
+# Run web server with Bun
+CMD ["bun", "run", "start"]

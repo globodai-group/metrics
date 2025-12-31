@@ -30,7 +30,7 @@ export default async function({log = true, sandbox = false, community = {}, extr
     authenticated: null,
     templates: {},
     queries: {},
-    settings: {port: 3000},
+    settings: {port: Number(process.env.PORT) || 3000},
     metadata: {},
     paths: {
       statics: __statics,
@@ -62,6 +62,12 @@ export default async function({log = true, sandbox = false, community = {}, extr
       await fd?.close()
     }
   }
+
+  //Environment variables override (for Heroku/Docker deployment)
+  if (process.env.METRICS_TOKEN)
+    conf.settings.token = process.env.METRICS_TOKEN
+  if (process.env.PORT)
+    conf.settings.port = Number(process.env.PORT)
 
   if (!conf.settings.templates)
     conf.settings.templates = {default: "classic", enabled: []}
