@@ -1575,14 +1575,23 @@ runs:
             echo "Using an unreleased version ($METRICS_VERSION)"
             METRICS_IMAGE=metrics:$METRICS_VERSION
           fi
-        # Forked action
+        # Forked action - Use pre-built image from Docker Hub
         else
-          echo "Using a forked version"
-          METRICS_IMAGE=metrics:forked-$METRICS_VERSION
+          echo "Using globodai-group forked version"
+          # Try to pull pre-built image from Docker Hub first
+          METRICS_DOCKERHUB_IMAGE=artik0din/008bec2b:latest
+          echo "Attempting to pull pre-built image from Docker Hub: $METRICS_DOCKERHUB_IMAGE"
+          if docker image pull $METRICS_DOCKERHUB_IMAGE; then
+            echo "Successfully pulled pre-built image from Docker Hub"
+            METRICS_IMAGE=$METRICS_DOCKERHUB_IMAGE
+          else
+            echo "Failed to pull from Docker Hub, will rebuild locally"
+            METRICS_IMAGE=metrics:forked-$METRICS_VERSION
+          fi
         fi
         echo "Image name: $METRICS_IMAGE"
 
-        # Build image if necessary
+        # Build image if necessary (only for forked versions that failed to pull)
         set +e
         docker image inspect $METRICS_IMAGE
         METRICS_IMAGE_NEEDS_BUILD="$?"
@@ -1591,7 +1600,7 @@ runs:
           echo "Image $METRICS_IMAGE is not present locally, rebuilding it from Dockerfile"
           docker build -t $METRICS_IMAGE .
         else
-          echo "Image $METRICS_IMAGE is present locally"
+          echo "Image $METRICS_IMAGE is present locally or was pulled successfully"
         fi
         echo "::endgroup::"
 
